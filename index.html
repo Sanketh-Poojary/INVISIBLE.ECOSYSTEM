@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Microbiology Explorer</title>
+    <style>
+        :root {
+            --primary-glow: #0ea5e9;
+            --secondary-glow: #10b981;
+            --bg-color: #020617;
+            --panel-bg: rgba(15, 23, 42, 0.75);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* Ambient floating particles */
+        .particles-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: -1;
+            overflow: hidden;
+            pointer-events: none;
+        }
+
+        .particle {
+            position: absolute;
+            border-radius: 50%;
+            background: radial-gradient(circle, var(--secondary-glow) 0%, transparent 70%);
+            opacity: 0.3;
+            animation: float infinite linear;
+        }
+
+        @keyframes float {
+            0% { transform: translateY(0) translateX(0) rotate(0deg); }
+            33% { transform: translateY(-100px) translateX(50px) rotate(120deg); }
+            66% { transform: translateY(-50px) translateX(-50px) rotate(240deg); }
+            100% { transform: translateY(0) translateX(0) rotate(360deg); }
+        }
+
+        /* UI Layout */
+        .header {
+            margin-top: 3rem;
+            text-align: center;
+            z-index: 10;
+        }
+
+        .header h1 {
+            font-size: 3rem;
+            font-weight: 800;
+            background: linear-gradient(to right, var(--primary-glow), var(--secondary-glow));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
+            text-shadow: 0 0 20px rgba(16, 185, 129, 0.2);
+        }
+
+        .header p {
+            color: var(--text-muted);
+            font-size: 1.1rem;
+        }
+
+        .search-container {
+            margin-top: 2rem;
+            display: flex;
+            gap: 1rem;
+            width: 100%;
+            max-width: 600px;
+            padding: 0 1rem;
+            z-index: 10;
+        }
+
+        input[type="text"] {
+            flex: 1;
+            padding: 1rem 1.5rem;
+            border-radius: 50px;
+            border: 1px solid rgba(14, 165, 233, 0.3);
+            background: var(--panel-bg);
+            color: var(--text-main);
+            font-size: 1.1rem;
+            outline: none;
+            box-shadow: 0 0 15px rgba(14, 165, 233, 0.1);
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        input[type="text"]:focus {
+            border-color: var(--primary-glow);
+            box-shadow: 0 0 20px rgba(14, 165, 233, 0.3);
+        }
+
+        button {
+            padding: 0 2rem;
+            border-radius: 50px;
+            border: none;
+            background: linear-gradient(135deg, var(--primary-glow), var(--secondary-glow));
+            color: white;
+            font-weight: bold;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            box-shadow: 0 0 15px rgba(16, 185, 129, 0.3);
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 25px rgba(16, 185, 129, 0.5);
+        }
+
+        /* Results Panel */
+        .result-container {
+            margin-top: 3rem;
+            width: 100%;
+            max-width: 900px;
+            padding: 0 1rem;
+            display: none;
+            grid-template-columns: 1fr 1.5fr;
+            gap: 2rem;
+            z-index: 10;
+            margin-bottom: 3rem;
+        }
+
+        .image-panel {
+            background: var(--panel-bg);
+            border-radius: 20px;
+            padding: 1rem;
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            backdrop-filter: blur(10px);
+        }
+
+        .image-panel img {
+            width: 100%;
+            border-radius: 10px;
+            object-fit: cover;
+            border: 1px solid rgba(255,255,255,0.1);
+            min-height: 250px;
+        }
+
+        .image-caption {
+            margin-top: 1rem;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            text-align: center;
+        }
+
+        .info-panel {
+            background: var(--panel-bg);
+            border-radius: 20px;
+            padding: 2rem;
+            border: 1px solid rgba(14, 165, 233, 0.2);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            backdrop-filter: blur(10px);
+        }
+
+        .info-panel h2 {
+            color: var(--secondary-glow);
+            margin-bottom: 1.5rem;
+            font-size: 2rem;
+            border-bottom: 1px solid rgba(16, 185, 129, 0.2);
+            padding-bottom: 0.5rem;
+        }
+
+        .data-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .data-label {
+            color: var(--primary-glow);
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 0.3rem;
+            font-weight: bold;
+        }
+
+        .data-value {
+            line-height: 1.6;
+            color: #cbd5e1;
+        }
+
+        /* Biological Loader */
+        .loader {
+            display: none;
+            margin-top: 4rem;
+            width: 60px;
+            height: 60px;
+            border: 5px solid rgba(16, 185, 129, 0.2);
+            border-top-color: var(--secondary-glow);
+            border-radius: 50%;
+            animation: spin 1s infinite linear;
+            z-index: 10;
+        }
+
+        @keyframes spin {
+            100% { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 768px) {
+            .result-container {
+                grid-template-columns: 1fr;
+            }
+            .header h1 {
+                font-size: 2.2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Ambient Particles -->
+    <div class="particles-container" id="particles"></div>
+
+    <div class="header">
+        <h1>Microbiology Explorer</h1>
+        <p>Search any microorganism to reveal its cellular structure and traits</p>
+    </div>
+
+    <div class="search-container">
+        <input type="text" id="searchInput" placeholder="e.g. Tardigrade, E. coli, Saccharomyces cerevisiae..." onkeypress="handleKeyPress(event)">
+        <button onclick="searchMicrobe()">Analyze</button>
+    </div>
+
+    <div class="loader" id="loader"></div>
+
+    <div class="result-container" id="resultContainer">
+        <div class="image-panel">
+            <img id="microbeImage" src="" alt="Microscopic View">
+            <p class="image-caption">Microscopic / Structural View (via Wikipedia)</p>
+        </div>
+        <div class="info-panel">
+            <h2 id="microbeName">Organism Name</h2>
+            
+            <div class="data-group">
+                <div class="data-label">Morphology (Shape)</div>
+                <div class="data-value" id="microbeShape">Loading...</div>
+            </div>
+            
+            <div class="data-group">
+                <div class="data-label">Estimated Size</div>
+                <div class="data-value" id="microbeSize">Loading...</div>
+            </div>
+            
+            <div class="data-group">
+                <div class="data-label">Key Characteristics</div>
+                <div class="data-value" id="microbeChars">Loading...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- CONFIGURATION ---
+        // REPLACE THIS WITH YOUR GEMINI API KEY from https://aistudio.google.com/
+        const GEMINI_API_KEY = 'YOUR_GEMINI_API_KEY'; 
+        
+        // Setup background particles
+        const particlesContainer = document.getElementById('particles');
+        for (let i = 0; i < 20; i++) {
+            const particle = document.createElement('div');
+            particle.classList.add('particle');
+            const size = Math.random() * 100 + 50;
+            particle.style.width = `${size}px`;
+            particle.style.height = `${size}px`;
+            particle.style.left = `${Math.random() * 100}vw`;
+            particle.style.top = `${Math.random() * 100}vh`;
+            particle.style.animationDuration = `${Math.random() * 15 + 10}s`;
+            particle.style.animationDelay = `-${Math.random() * 10}s`;
+            particlesContainer.appendChild(particle);
+        }
+
+        function handleKeyPress(e) {
+            if (e.key === 'Enter') searchMicrobe();
+        }
+
+        async function searchMicrobe() {
+            const input = document.getElementById('searchInput').value.trim();
+            if (!input) return;
+
+            const loader = document.getElementById('loader');
+            const resultContainer = document.getElementById('resultContainer');
+            
+            // UI Reset
+            loader.style.display = 'block';
+            resultContainer.style.display = 'none';
+
+            try {
+                // Fetch Image from Wikipedia API
+                const wikiRes = await fetch(`https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(input)}&prop=pageimages&format=json&pithumbsize=600&origin=*`);
+                const wikiData = await wikiRes.json();
+                const pages = wikiData.query.pages;
+                const pageId = Object.keys(pages)[0];
+                
+                const imgEl = document.getElementById('microbeImage');
+                if (pageId !== "-1" && pages[pageId].thumbnail) {
+                    imgEl.src = pages[pageId].thumbnail.source;
+                } else {
+                    imgEl.src = "https://via.placeholder.com/600x400/0f172a/10b981?text=No+Microscopic+Image+Found";
+                }
+
+                // Fetch Info from Gemini API
+                document.getElementById('microbeName').innerText = input.charAt(0).toUpperCase() + input.slice(1);
+                
+                if(GEMINI_API_KEY === 'YOUR_GEMINI_API_KEY') {
+                    // Fallback if API key is not set by user
+                    document.getElementById('microbeShape').innerText = "Please add your Gemini API Key in the code to fetch data.";
+                    document.getElementById('microbeSize').innerText = "Please add your Gemini API Key in the code to fetch data.";
+                    document.getElementById('microbeChars').innerText = "Please add your Gemini API Key in the code to fetch data.";
+                } else {
+                    await fetchGeminiData(input);
+                }
+
+                // Show Results
+                loader.style.display = 'none';
+                resultContainer.style.display = 'grid';
+
+            } catch (error) {
+                console.error("Error fetching data:", error);
+                alert("An error occurred while fetching the scientific data.");
+                loader.style.display = 'none';
+            }
+        }
+
+        async function fetchGeminiData(microbeName) {
+            const prompt = `You are a microbiology expert. Analyze the microorganism: "${microbeName}". 
+            Provide the response strictly in JSON format with the following keys:
+            "shape" (brief description of its morphology), 
+            "size" (average size range), 
+            "characteristics" (1 paragraph detailing its biological traits, habitat, and significance).`;
+
+            const requestBody = {
+                contents: [{
+                    parts: [{ text: prompt }]
+                }],
+                generationConfig: {
+                    response_mime_type: "application/json"
+                }
+            };
+
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(requestBody)
+            });
+
+            const data = await response.json();
+            
+            try {
+                const textResponse = data.candidates[0].content.parts[0].text;
+                const parsedData = JSON.parse(textResponse);
+                
+                document.getElementById('microbeShape').innerText = parsedData.shape || "Unknown";
+                document.getElementById('microbeSize').innerText = parsedData.size || "Unknown";
+                document.getElementById('microbeChars').innerText = parsedData.characteristics || "Unknown";
+            } catch (err) {
+                console.error("Failed to parse Gemini output:", err);
+                document.getElementById('microbeChars').innerText = "Failed to parse scientific data.";
+            }
+        }
+    </script>
+</body>
+</html>
